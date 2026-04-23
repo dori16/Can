@@ -51,7 +51,7 @@ export const Login: React.FC = () => {
             <Shield className="w-8 h-8 text-white" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-slate-900">SoccorsoVolontari</CardTitle>
+            <CardTitle className="text-2xl font-bold text-slate-900"> Corpo Ambientale Nazionale Sez. di Martina Franca</CardTitle>
             <CardDescription>{isSignUp ? 'Registra un nuovo account' : 'Accedi all\'area gestionale missioni'}</CardDescription>
           </div>
         </CardHeader>
@@ -59,10 +59,10 @@ export const Login: React.FC = () => {
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="mario.rossi@esempio.it" 
+              <Input
+                id="email"
+                type="email"
+                placeholder="mario.rossi@esempio.it"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -70,15 +70,15 @@ export const Login: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
+              <Input
+                id="password"
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
-            <Button 
+            <Button
               type="submit"
               className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-3 shadow-sm transition-all"
               disabled={loading}
@@ -90,17 +90,17 @@ export const Login: React.FC = () => {
               )}
             </Button>
           </form>
-          
+
           <div className="text-center mt-4">
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-sm text-blue-600 hover:underline"
             >
               {isSignUp ? 'Hai già un account? Accedi' : 'Non hai un account? Registrati'}
             </button>
           </div>
-          
+
           <p className="text-[10px] text-center text-slate-400 mt-6">
             L'accesso è riservato al personale autorizzato dell'associazione.
           </p>

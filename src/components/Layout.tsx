@@ -28,11 +28,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-brand-blue p-2 rounded flex items-center justify-center text-white font-bold w-10 h-10">
-              AV
+              CAN
             </div>
             <div>
               <h1 className="font-bold text-lg leading-tight text-slate-900">
-                Associazione<br/><span className="text-brand-blue">Volontariato</span>
+                Corpo Ambientale Nazionale<br /><span className="text-brand-blue">Sez. di Martina Franca</span>
               </h1>
             </div>
           </div>
@@ -62,7 +62,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
 
       <footer className="bg-white border-t border-slate-200 py-6">
         <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
-          &copy; {new Date().getFullYear()} SoccorsoVolontari - Gestione Missioni. Tutti i diritti riservati.
+          &copy; {new Date().getFullYear()} Corpo Ambientale Nazionale Sez. di Martina Franca. Tutti i diritti riservati.
         </div>
       </footer>
     </div>

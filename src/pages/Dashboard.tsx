@@ -16,7 +16,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const Dashboard: React.FC = () => {
+export const Dashboard: React.FC<{ userRole?: string }> = ({ userRole }) => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,12 +55,14 @@ export const Dashboard: React.FC = () => {
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">Gestione Missioni</h2>
           <p className="text-slate-500 font-medium">Veicolo: {vehicle?.model} - {vehicle?.plate}</p>
         </div>
-        <Link to="/missions/new">
-          <Button className="bg-brand-blue hover:bg-blue-700 text-white px-6 py-6 rounded-lg font-bold shadow-lg flex items-center space-x-2 transition-all hover:scale-[1.02]">
-            <Plus className="w-5 h-5 mr-2" />
-            <span>NUOVA MISSIONE</span>
-          </Button>
-        </Link>
+        {userRole === 'admin' && (
+          <Link to="/missions/new">
+            <Button className="bg-brand-blue hover:bg-blue-700 text-white px-6 py-6 rounded-lg font-bold shadow-lg flex items-center space-x-2 transition-all hover:scale-[1.02]">
+              <Plus className="w-5 h-5 mr-2" />
+              <span>NUOVA MISSIONE</span>
+            </Button>
+          </Link>
+        )}
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

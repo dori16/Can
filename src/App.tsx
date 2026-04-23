@@ -10,21 +10,49 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
+import { UserRole } from '@/types';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>('editor');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const fetchRole = async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .single();
+        if (!error && data) {
+          setUserRole(data.role as UserRole);
+        }
+      } catch (err) {
+        console.error('Error fetching role:', err);
+      }
+    };
+
+    const initializeAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchRole(session.user.id);
+      }
       setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchRole(session.user.id);
+      } else {
+        setUserRole('editor');
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -37,7 +65,7 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-blue" />
       </div>
     );
   }
@@ -53,8 +81,8 @@ function App() {
             path="/dashboard" 
             element={
               user ? (
-                <Layout onLogout={handleLogout} userRole="admin">
-                  <Dashboard />
+                <Layout onLogout={handleLogout} userRole={userRole}>
+                  <Dashboard userRole={userRole} />
                 </Layout>
               ) : <Navigate to="/login" />
             } 
@@ -63,20 +91,22 @@ function App() {
           <Route 
             path="/missions/new" 
             element={
-              user ? (
-                <Layout onLogout={handleLogout} userRole="admin">
+              user && userRole === 'admin' ? (
+                <Layout onLogout={handleLogout} userRole={userRole}>
                   <MissionForm />
                 </Layout>
-              ) : <Navigate to="/login" />
+              ) : <Navigate to={user ? "/dashboard" : "/login"} />
             } 
           />
 
           <Route 
             path="/missions/:id" 
             element={
-              <Layout onLogout={user ? handleLogout : undefined} userRole={user ? "admin" : "editor"}>
-                <MissionEditor />
-              </Layout>
+              user ? (
+                <Layout onLogout={handleLogout} userRole={userRole}>
+                  <MissionEditor userRole={userRole} />
+                </Layout>
+              ) : <Navigate to="/login" />
             } 
           />
 
