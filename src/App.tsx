@@ -66,13 +66,17 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase logout error:', error);
+        localStorage.clear(); // Force clear local storage if Supabase fails
+      }
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout exception:', error);
+      localStorage.clear();
     } finally {
       setUser(null);
       setUserRole('editor');
-      window.location.href = '/login';
     }
   };
 
