@@ -1,0 +1,95 @@
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Shield, Truck, ClipboardList, LogOut, LayoutDashboard } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { motion } from 'motion/react';
+
+interface LayoutProps {
+  children: React.ReactNode;
+  userRole?: 'admin' | 'editor';
+  onLogout?: () => void;
+}
+
+export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) => {
+  const location = useLocation();
+
+  const navItems = [
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin'] },
+    { name: 'Missioni', icon: ClipboardList, path: '/missions', roles: ['admin'] },
+    { name: 'Veicolo', icon: Truck, path: '/vehicle', roles: ['admin'] },
+  ];
+
+  const filteredNav = navItems.filter(item => !userRole || item.roles.includes(userRole));
+
+  return (
+    <div className="min-h-screen bg-brand-bg flex flex-col font-sans">
+      <header className="bg-white border-b border-brand-border sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-brand-blue p-2 rounded flex items-center justify-center text-white font-bold w-10 h-10">
+              AV
+            </div>
+            <div>
+              <h1 className="font-bold text-lg leading-tight text-slate-900">
+                Associazione<br/><span className="text-brand-blue">Volontariato</span>
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {onLogout && (
+              <Button variant="ghost" size="sm" onClick={onLogout} className="text-slate-500 hover:text-slate-900">
+                <LogOut className="w-4 h-4 mr-2" />
+                Esci
+              </Button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <div className="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full">
+        {userRole === 'admin' && (
+          <aside className="w-full md:w-[260px] bg-brand-sidebar md:min-h-[calc(100vh-64px)] overflow-y-auto">
+            <nav className="flex md:flex-col p-4 gap-1">
+              {filteredNav.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      "flex items-center gap-3 px-6 py-3 transition-all duration-200 font-medium text-sm w-full",
+                      isActive 
+                        ? "bg-brand-active text-white border-l-4 border-brand-blue" 
+                        : "text-slate-400 hover:bg-brand-active hover:text-white border-l-4 border-transparent"
+                    )}
+                  >
+                    <item.icon className={cn("w-4 h-4", isActive ? "text-brand-blue" : "")} />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </nav>
+          </aside>
+        )}
+
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {children}
+          </motion.div>
+        </main>
+      </div>
+
+      <footer className="bg-white border-t border-slate-200 py-6">
+        <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
+          &copy; {new Date().getFullYear()} SoccorsoVolontari - Gestione Missioni. Tutti i diritti riservati.
+        </div>
+      </footer>
+    </div>
+  );
+};
