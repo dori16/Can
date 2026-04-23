@@ -59,7 +59,15 @@ function App() {
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      setUserRole('editor');
+      window.location.href = '/login';
+    }
   };
 
   if (loading) {
