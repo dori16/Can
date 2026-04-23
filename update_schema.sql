@@ -6,7 +6,8 @@ ALTER TABLE public.missions ADD COLUMN "crewIds" uuid[] DEFAULT '{}';
 CREATE TABLE public.profiles (
     "id" uuid REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     "email" text NOT NULL,
-    "displayName" text,
+    "firstName" text,
+    "lastName" text,
     "role" text DEFAULT 'operator'
 );
 
@@ -19,8 +20,13 @@ CREATE POLICY "Enable write access for all authenticated users on profiles" ON p
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, "displayName")
-  VALUES (new.id, new.email, new.raw_user_meta_data->>'displayName');
+  INSERT INTO public.profiles (id, email, "firstName", "lastName")
+  VALUES (
+    new.id, 
+    new.email, 
+    new.raw_user_meta_data->>'firstName', 
+    new.raw_user_meta_data->>'lastName'
+  );
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

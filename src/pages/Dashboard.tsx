@@ -86,9 +86,6 @@ export const Dashboard: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-brand-border overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <h3 className="font-bold text-slate-900 uppercase tracking-tight">Ultime Missioni</h3>
-          <Link to="/missions" className="text-sm text-brand-blue font-bold hover:underline">
-            Vedi tutte
-          </Link>
         </div>
         
         {missions.length === 0 ? (
@@ -112,7 +109,7 @@ export const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 italic">
-                {missions.slice(0, 5).map((mission) => (
+                {missions.map((mission) => (
                   <tr key={mission.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="p-4 font-bold text-slate-900">
                       {mission.orderNumber || '--'}

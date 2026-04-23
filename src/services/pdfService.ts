@@ -3,7 +3,7 @@ import { Mission } from '@/types';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
-export async function generateMissionPDF(mission: Mission) {
+export async function generateMissionPDF(mission: Mission, crewNames: string = 'Nessun equipaggio assegnato') {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]); // A4 size
   const { width, height } = page.getSize();
@@ -35,6 +35,9 @@ export async function generateMissionPDF(mission: Mission) {
   const subtitleWidth = font.widthOfTextAtSize(subtitleText, subtitleSize);
 
 
+  const headerPadding = 20;
+  const logoHeight = logoDims ? logoDims.height : 0;
+
   // Header
   page.drawRectangle({
     x: 0,
@@ -44,9 +47,18 @@ export async function generateMissionPDF(mission: Mission) {
     color: rgb(0.1, 0.3, 0.6),
   });
 
+  if (logoImage && logoDims) {
+    page.drawImage(logoImage, {
+      x: (width - logoDims.width) / 2,
+      y: height - headerPadding - logoDims.height,
+      width: logoDims.width,
+      height: logoDims.height,
+    });
+  }
+
   page.drawText(titleText, {
     x: (width - titleWidth) / 2,
-    y: height - 40,
+    y: height - headerPadding - logoHeight - 20,
     size: titleSize,
     font: boldFont,
     color: rgb(1, 1, 1),
@@ -54,20 +66,11 @@ export async function generateMissionPDF(mission: Mission) {
 
   page.drawText(subtitleText, {
     x: (width - subtitleWidth) / 2,
-    y: height - 60,
+    y: height - headerPadding - logoHeight - 40,
     size: subtitleSize,
     font: font,
     color: rgb(1, 1, 1),
   });
-
-  if (logoImage && logoDims) {
-    page.drawImage(logoImage, {
-      x: (width - logoDims.width) / 2,
-      y: height - 70 - logoDims.height,
-      width: logoDims.width,
-      height: logoDims.height,
-    });
-  }
 
   // Mission Info Section
   let currentY = height - headerHeight - 40;
@@ -79,11 +82,14 @@ export async function generateMissionPDF(mission: Mission) {
 
   drawText(`Ora Inizio: ${mission.startTime}`, 50, currentY);
   drawText(`Ora Fine: ${mission.endTime || 'N/A'}`, 300, currentY);
+  currentY -= 20;
+
+  drawText(`Equipaggio: ${crewNames}`, 50, currentY, 10, boldFont);
   currentY -= 30;
 
   // Vehicle Section
   page.drawRectangle({ x: 50, y: currentY - 5, width: width - 100, height: 20, color: rgb(0.9, 0.9, 0.9) });
-  drawText('DATI VEICOLO', 55, currentY, 10, boldFont);
+  drawText('DATI VEICOLO E RIFORNIMENTO', 55, currentY, 10, boldFont);
   currentY -= 30;
 
   drawText(`KM Inizio: ${mission.kmStart}`, 50, currentY);
@@ -92,6 +98,14 @@ export async function generateMissionPDF(mission: Mission) {
 
   if (mission.kmEnd) {
     drawText(`Totale KM Percorsi: ${mission.kmEnd - mission.kmStart}`, 50, currentY, 10, boldFont);
+  }
+  currentY -= 20;
+
+  if (mission.fuelLiters || mission.fuelCost) {
+    drawText(`Rifornimento Litri: ${mission.fuelLiters || '0'} L`, 50, currentY);
+    drawText(`Costo Rifornimento: ${mission.fuelCost || '0'} €`, 300, currentY);
+  } else {
+    drawText(`Nessun rifornimento effettuato`, 50, currentY);
   }
   currentY -= 40;
 
