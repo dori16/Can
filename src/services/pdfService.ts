@@ -3,7 +3,7 @@ import { Mission } from '@/types';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
-export async function generateMissionPDF(mission: Mission, crewNames: string = 'Nessun equipaggio assegnato') {
+export async function generateMissionPDF(mission: Mission, crewNames: string = 'Nessun equipaggio assegnato', coordinatorName: string = 'N/A') {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]); // A4 size
   const { width, height } = page.getSize();
@@ -84,12 +84,15 @@ export async function generateMissionPDF(mission: Mission, crewNames: string = '
   drawText(`Ora Fine: ${mission.endTime || 'N/A'}`, 300, currentY);
   currentY -= 20;
 
+  drawText(`Coordinatore: ${coordinatorName}`, 50, currentY, 10, boldFont);
+  currentY -= 20;
+
   drawText(`Equipaggio: ${crewNames}`, 50, currentY, 10, boldFont);
   currentY -= 30;
 
   // Vehicle Section
   page.drawRectangle({ x: 50, y: currentY - 5, width: width - 100, height: 20, color: rgb(0.9, 0.9, 0.9) });
-  drawText('DATI VEICOLO E RIFORNIMENTO', 55, currentY, 10, boldFont);
+  drawText('DATI VEICOLO', 55, currentY, 10, boldFont);
   currentY -= 30;
 
   drawText(`KM Inizio: ${mission.kmStart}`, 50, currentY);
@@ -99,15 +102,7 @@ export async function generateMissionPDF(mission: Mission, crewNames: string = '
   if (mission.kmEnd) {
     drawText(`Totale KM Percorsi: ${mission.kmEnd - mission.kmStart}`, 50, currentY, 10, boldFont);
   }
-  currentY -= 20;
-
-  if (mission.fuelLiters || mission.fuelCost) {
-    drawText(`Rifornimento Litri: ${mission.fuelLiters || '0'} L`, 50, currentY);
-    drawText(`Costo Rifornimento: ${mission.fuelCost || '0'} €`, 300, currentY);
-  } else {
-    drawText(`Nessun rifornimento effettuato`, 50, currentY);
-  }
-  currentY -= 40;
+  currentY -= 30;
 
   // Tasks Section
   page.drawRectangle({ x: 50, y: currentY - 5, width: width - 100, height: 20, color: rgb(0.9, 0.9, 0.9) });
@@ -140,6 +135,24 @@ export async function generateMissionPDF(mission: Mission, crewNames: string = '
 
   // Footer / Signatures
   currentY = 100;
+
+  // Add Signature Image (firma.jpg)
+  try {
+    const signatureResponse = await fetch('/firma.jpg');
+    const signatureBytes = await signatureResponse.arrayBuffer();
+    const signatureImage = await pdfDoc.embedJpg(signatureBytes);
+    const signatureDims = signatureImage.scaleToFit(100, 50);
+    
+    page.drawImage(signatureImage, {
+      x: 75,
+      y: currentY + 5,
+      width: signatureDims.width,
+      height: signatureDims.height,
+    });
+  } catch (error) {
+    console.error('Error embedding signature:', error);
+  }
+
   page.drawLine({
     start: { x: 50, y: currentY },
     end: { x: 200, y: currentY },
@@ -147,12 +160,13 @@ export async function generateMissionPDF(mission: Mission, crewNames: string = '
   });
   drawText('Firma Coordinatore', 50, currentY - 15);
 
+  drawText(crewNames, 350, currentY + 5, 8);
   page.drawLine({
     start: { x: 350, y: currentY },
     end: { x: 500, y: currentY },
     thickness: 1,
   });
-  drawText('Firma Operatore', 350, currentY - 15);
+  drawText('Firma Operatori', 350, currentY - 15);
 
   const pdfBytes = await pdfDoc.save();
   const blob = new Blob([pdfBytes], { type: 'application/pdf' });

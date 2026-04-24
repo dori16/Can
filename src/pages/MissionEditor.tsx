@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
   Truck, 
-  Fuel, 
   ClipboardCheck, 
   CloudSun,
   Save,
@@ -33,8 +32,6 @@ import { Link } from 'react-router-dom';
 
 const reportSchema = z.object({
   kmEnd: z.number().min(1, 'Inserire i KM finali'),
-  fuelLiters: z.number().optional().nullable(),
-  fuelCost: z.number().optional().nullable(),
   missionReport: z.string().min(10, 'Il resoconto deve essere più dettagliato'),
   events: z.string().optional(),
   temperature: z.number().optional().nullable(),
@@ -70,8 +67,6 @@ export const MissionEditor: React.FC = () => {
           reset({
             kmEnd: data.kmEnd || data.kmStart + 10,
             endTime: data.endTime || new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-            fuelLiters: data.fuelLiters,
-            fuelCost: data.fuelCost,
             missionReport: data.missionReport || '',
             events: data.events || '',
             temperature: data.temperature,
@@ -131,7 +126,13 @@ export const MissionEditor: React.FC = () => {
         return p ? (p.firstName && p.lastName ? `${p.lastName} ${p.firstName}` : p.email.split('@')[0]) : 'Sconosciuto';
       }).join(', ') || 'Nessun equipaggio assegnato';
 
-      await generateMissionPDF({ ...mission, ...watch() as any }, crewNames);
+      // Find coordinator name
+      const coordinator = profiles.find(p => p.id === mission.assignedBy || p.email === mission.assignedBy);
+      const coordinatorName = coordinator 
+        ? (coordinator.firstName && coordinator.lastName ? `${coordinator.lastName} ${coordinator.firstName}` : coordinator.email.split('@')[0]) 
+        : mission.assignedBy;
+
+      await generateMissionPDF({ ...mission, ...watch() as any }, crewNames, coordinatorName);
       toast.success('PDF generato!');
     } catch (error) {
       toast.error('Errore nella generazione del PDF');
@@ -185,7 +186,12 @@ export const MissionEditor: React.FC = () => {
             </div>
             <div className="flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5" />
-              Coord: {mission.assignedBy}
+              Coord: {(() => {
+                const coordinator = profiles.find(p => p.id === mission.assignedBy || p.email === mission.assignedBy);
+                return coordinator 
+                  ? (coordinator.firstName && coordinator.lastName ? `${coordinator.lastName} ${coordinator.firstName}` : coordinator.email.split('@')[0]) 
+                  : mission.assignedBy;
+              })()}
             </div>
             <div className="flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5" />
@@ -269,24 +275,7 @@ export const MissionEditor: React.FC = () => {
         </div>
 
         <div className="space-y-8">
-          <Card className="border-slate-200 shadow-sm rounded-2xl overflow-hidden">
-            <CardHeader className="bg-slate-50 border-b border-slate-100">
-              <CardTitle className="text-base font-bold flex items-center gap-2 text-amber-600">
-                <Fuel className="w-5 h-5" />
-                Rifornimento
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fuelLiters">Litri Erogati</Label>
-                <Input id="fuelLiters" type="number" step="0.01" {...register('fuelLiters', { valueAsNumber: true })} className="border-slate-200" disabled={mission.status === 'completed'} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fuelCost">Costo Totale (€)</Label>
-                <Input id="fuelCost" type="number" step="0.01" {...register('fuelCost', { valueAsNumber: true })} className="border-slate-200" disabled={mission.status === 'completed'} />
-              </div>
-            </CardContent>
-          </Card>
+
 
           <Card className="border-slate-200 shadow-sm rounded-2xl overflow-hidden">
             <CardHeader className="bg-slate-50 border-b border-slate-100">

@@ -31,7 +31,7 @@ export const MissionForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [initialKm, setInitialKm] = useState(0);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [crew, setCrew] = useState<string[]>(['', '', '']);
+  const [crew, setCrew] = useState<string[]>(['', '', '', '']);
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<MissionFormValues>({
     resolver: zodResolver(missionSchema),
@@ -58,7 +58,7 @@ export const MissionForm: React.FC = () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const assignedBy = user?.email || 'Admin';
+      const assignedBy = user?.id || 'Admin';
       const finalCrewIds = crew.filter(id => id !== '' && id !== 'none');
 
       const missionId = await MissionService.createMission({
@@ -128,11 +128,12 @@ export const MissionForm: React.FC = () => {
 
             <div className="pt-4 border-t border-slate-100">
               <Label className="font-semibold text-slate-700 mb-3 block">Equipaggio (OdS)</Label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[
                   { label: "Autista", index: 0 },
                   { label: "Operatore 1", index: 1 },
-                  { label: "Operatore 2", index: 2 }
+                  { label: "Operatore 2", index: 2 },
+                  { label: "Operatore 3", index: 3 }
                 ].map((role) => (
                   <div key={role.index} className="space-y-2">
                     <Label className="text-xs text-slate-500">{role.label}</Label>

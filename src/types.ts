@@ -32,10 +32,7 @@ export interface Mission {
   kmStart: number;
   kmEnd?: number;
   
-  // Fuel (optional)
-  fuelLiters?: number;
-  fuelCost?: number;
-  
+
   // Tasks
   assignedTasks: string;
   missionReport?: string;
