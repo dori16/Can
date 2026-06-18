@@ -29,6 +29,7 @@ import { UserService } from '@/services/userService';
 import { generateMissionPDF } from '@/services/pdfService';
 import { Mission, Profile } from '@/types';
 import { Link } from 'react-router-dom';
+import { formatProfileName, getMissionCoordinatorLabel } from '@/lib/coordinator';
 
 const reportSchema = z.object({
   kmEnd: z.number().min(1, 'Inserire i KM finali'),
@@ -123,14 +124,10 @@ export const MissionEditor: React.FC = () => {
     try {
       const crewNames = mission.crewIds?.map(cid => {
         const p = profiles.find(pr => pr.id === cid);
-        return p ? (p.firstName && p.lastName ? `${p.lastName} ${p.firstName}` : p.email.split('@')[0]) : 'Sconosciuto';
+        return p ? formatProfileName(p) : 'Sconosciuto';
       }).join(', ') || 'Nessun equipaggio assegnato';
 
-      // Find coordinator name
-      const coordinator = profiles.find(p => p.id === mission.assignedBy || p.email === mission.assignedBy);
-      const coordinatorName = coordinator 
-        ? (coordinator.firstName && coordinator.lastName ? `${coordinator.lastName} ${coordinator.firstName}` : coordinator.email.split('@')[0]) 
-        : mission.assignedBy;
+      const coordinatorName = getMissionCoordinatorLabel(profiles);
 
       await generateMissionPDF({ ...mission, ...watch() as any }, crewNames, coordinatorName);
       toast.success('PDF generato!');
@@ -186,18 +183,13 @@ export const MissionEditor: React.FC = () => {
             </div>
             <div className="flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5" />
-              Coord: {(() => {
-                const coordinator = profiles.find(p => p.id === mission.assignedBy || p.email === mission.assignedBy);
-                return coordinator 
-                  ? (coordinator.firstName && coordinator.lastName ? `${coordinator.lastName} ${coordinator.firstName}` : coordinator.email.split('@')[0]) 
-                  : mission.assignedBy;
-              })()}
+              Coord: {getMissionCoordinatorLabel(profiles)}
             </div>
             <div className="flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5" />
               Eq: {mission.crewIds?.map(cid => {
                 const p = profiles.find(pr => pr.id === cid);
-                return p ? (p.firstName && p.lastName ? `${p.lastName} ${p.firstName}` : p.email.split('@')[0]) : 'Sconosciuto';
+                return p ? formatProfileName(p) : 'Sconosciuto';
               }).join(', ') || 'Nessuno'}
             </div>
           </div>
@@ -330,3 +322,4 @@ export const MissionEditor: React.FC = () => {
     </div>
   );
 };
+
