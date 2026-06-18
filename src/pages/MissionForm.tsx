@@ -15,6 +15,7 @@ import { UserService } from '@/services/userService';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatProfileName, isMissionCreatedOnBehalfOfCoordinator } from '@/lib/coordinator';
 
 const missionSchema = z.object({
   date: z.string().min(1, 'La data è obbligatoria'),
@@ -32,6 +33,7 @@ export const MissionForm: React.FC = () => {
   const [initialKm, setInitialKm] = useState(0);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [crew, setCrew] = useState<string[]>(['', '', '', '']);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<MissionFormValues>({
     resolver: zodResolver(missionSchema),
@@ -48,8 +50,12 @@ export const MissionForm: React.FC = () => {
         setInitialKm(v.currentKm);
         setValue('kmStart', v.currentKm);
       }
-      const p = await UserService.getProfiles();
+      const [p, { data: { session } }] = await Promise.all([
+        UserService.getProfiles(),
+        supabase.auth.getSession(),
+      ]);
       setProfiles(p);
+      setCurrentUserId(session?.user?.id ?? null);
     };
     init();
   }, [setValue]);
@@ -57,8 +63,8 @@ export const MissionForm: React.FC = () => {
   const onSubmit = async (data: MissionFormValues) => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const assignedBy = user?.id || 'Admin';
+      const { data: { session } } = await supabase.auth.getSession();
+      const assignedBy = session?.user?.id || 'Admin';
       const finalCrewIds = crew.filter(id => id !== '' && id !== 'none');
 
       const missionId = await MissionService.createMission({
@@ -76,6 +82,10 @@ export const MissionForm: React.FC = () => {
     }
   };
 
+  const createdOnBehalfOfCoordinator = currentUserId
+    ? isMissionCreatedOnBehalfOfCoordinator(profiles, currentUserId)
+    : false;
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
@@ -84,7 +94,12 @@ export const MissionForm: React.FC = () => {
             <ArrowLeft className="w-5 h-5" />
           </Button>
         </Link>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Nuova Missione</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Nuova Missione</h1>
+          {createdOnBehalfOfCoordinator && (
+            <p className="text-sm text-slate-500 mt-1">Per conto del coordinatore</p>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -149,7 +164,7 @@ export const MissionForm: React.FC = () => {
                         <SelectItem value="none">Nessuno</SelectItem>
                         {profiles.map(p => (
                           <SelectItem key={p.id} value={p.id}>
-                            {p.firstName && p.lastName ? `${p.lastName} ${p.firstName}` : p.email}
+                            {formatProfileName(p)}
                           </SelectItem>
                         ))}
                       </SelectContent>
