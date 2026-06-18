@@ -11,6 +11,9 @@ import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
 import { UserRole } from '@/types';
+import { isAdminRole } from '@/lib/coordinator';
+
+const AUTH_INIT_TIMEOUT_MS = 8000;
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -18,33 +21,26 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRole = async (userId: string) => {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', userId)
-          .single();
-        if (!error && data) {
-          setUserRole(data.role as UserRole);
-        }
-      } catch (err) {
-        console.error('Error fetching role:', err);
-      }
+    let mounted = true;
+
+    const finishLoading = () => {
+      if (mounted) setLoading(false);
     };
+
+    const timeoutId = window.setTimeout(finishLoading, AUTH_INIT_TIMEOUT_MS);
 
     const initializeAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) console.error("Session error:", error);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchRole(session.user.id);
+        if (error) console.error('Session error:', error);
+        if (mounted) {
+          setUser(session?.user ?? null);
         }
       } catch (err) {
-        console.error("Auth initialization error:", err);
+        console.error('Auth initialization error:', err);
       } finally {
-        setLoading(false);
+        window.clearTimeout(timeoutId);
+        finishLoading();
       }
     };
 
@@ -52,24 +48,58 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Never call Supabase APIs here — it can deadlock token refresh.
       setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchRole(session.user.id);
-      } else {
+      if (!session?.user) {
         setUserRole('editor');
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      window.clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setUserRole('editor');
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchRole = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (!cancelled && !error && data) {
+          setUserRole(data.role as UserRole);
+        }
+      } catch (err) {
+        console.error('Error fetching role:', err);
+      }
+    };
+
+    fetchRole();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Supabase logout error:', error);
-        localStorage.clear(); // Force clear local storage if Supabase fails
+        localStorage.clear();
       }
     } catch (error) {
       console.error('Logout exception:', error);
@@ -109,7 +139,7 @@ function App() {
           <Route 
             path="/missions/new" 
             element={
-              user && userRole === 'admin' ? (
+              user && isAdminRole(userRole) ? (
                 <Layout onLogout={handleLogout} userRole={userRole}>
                   <MissionForm />
                 </Layout>
