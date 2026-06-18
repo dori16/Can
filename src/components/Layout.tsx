@@ -3,11 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { Shield, Truck, ClipboardList, LogOut, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { isAdminRole } from '@/lib/coordinator';
 import { motion } from 'motion/react';
+
+import { UserRole } from '@/types';
 
 interface LayoutProps {
   children: React.ReactNode;
-  userRole?: 'admin' | 'editor';
+  userRole?: UserRole;
   onLogout?: () => void;
 }
 
@@ -15,12 +18,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
   const location = useLocation();
 
   const navItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin'] },
-    { name: 'Missioni', icon: ClipboardList, path: '/missions', roles: ['admin'] },
-    { name: 'Veicolo', icon: Truck, path: '/vehicle', roles: ['admin'] },
+    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'coordinator'] },
+    { name: 'Missioni', icon: ClipboardList, path: '/missions', roles: ['admin', 'coordinator'] },
+    { name: 'Veicolo', icon: Truck, path: '/vehicle', roles: ['admin', 'coordinator'] },
   ];
 
-  const filteredNav = navItems.filter(item => !userRole || item.roles.includes(userRole));
+  const filteredNav = navItems.filter(item => !userRole || item.roles.includes(userRole) || isAdminRole(userRole));
 
   return (
     <div className="min-h-screen bg-brand-bg flex flex-col font-sans">
