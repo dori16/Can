@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MissionService, VehicleService } from '@/services/missionService';
 import { Mission, Vehicle } from '@/types';
+import { isAdminRole } from '@/lib/coordinator';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { clsx, type ClassValue } from 'clsx';
@@ -55,7 +56,7 @@ export const Dashboard: React.FC<{ userRole?: string }> = ({ userRole }) => {
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">Gestione Missioni</h2>
           <p className="text-slate-500 font-medium">Veicolo: {vehicle?.model} - {vehicle?.plate}</p>
         </div>
-        {userRole === 'admin' && (
+        {isAdminRole(userRole ?? '') && (
           <Link to="/missions/new">
             <Button className="bg-brand-blue hover:bg-blue-700 text-white px-6 py-6 rounded-lg font-bold shadow-lg flex items-center space-x-2 transition-all hover:scale-[1.02]">
               <Plus className="w-5 h-5 mr-2" />
