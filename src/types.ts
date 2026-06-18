@@ -42,7 +42,7 @@ export interface Mission {
   updatedAt: string;
 }
 
-export type UserRole = 'admin' | 'editor';
+export type UserRole = 'admin' | 'editor' | 'coordinator';
 
 export interface UserProfile {
   uid: string;
