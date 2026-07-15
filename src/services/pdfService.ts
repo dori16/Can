@@ -3,7 +3,12 @@ import { Mission } from '@/types';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
-export async function generateMissionPDF(mission: Mission, crewNames: string = 'Nessun equipaggio assegnato', coordinatorName: string = 'N/A') {
+export async function generateMissionPDF(
+  mission: Mission,
+  crewNames: string = 'Nessun equipaggio assegnato',
+  coordinatorName: string = 'N/A',
+  vehicleLabel?: string
+) {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]); // A4 size
   const { width, height } = page.getSize();
@@ -98,6 +103,11 @@ export async function generateMissionPDF(mission: Mission, crewNames: string = '
   drawText(`KM Inizio: ${mission.kmStart}`, 50, currentY);
   drawText(`KM Fine: ${mission.kmEnd || 'N/A'}`, 300, currentY);
   currentY -= 20;
+
+  if (vehicleLabel) {
+    drawText(`Veicolo: ${vehicleLabel}`, 50, currentY, 10, boldFont);
+    currentY -= 20;
+  }
 
   if (mission.kmEnd) {
     drawText(`Totale KM Percorsi: ${mission.kmEnd - mission.kmStart}`, 50, currentY, 10, boldFont);

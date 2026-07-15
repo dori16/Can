@@ -20,17 +20,11 @@ export const Login: React.FC = () => {
     setLoading(true);
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         toast.success('Registrazione completata! Controlla la tua email.');
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success('Accesso effettuato!');
         navigate('/dashboard');
@@ -44,21 +38,25 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <Card className="max-w-md w-full border-none shadow-2xl">
-        <CardHeader className="text-center space-y-4">
-          <div className="mx-auto bg-blue-600 p-3 rounded-2xl w-fit">
+    <div className="min-h-screen gradient-mesh flex items-center justify-center p-4">
+      <Card className="max-w-md w-full border-hairline shadow-[var(--shadow-panel)]">
+        <CardHeader className="text-center space-y-4 pb-2">
+          <div className="mx-auto bg-primary p-3 rounded-lg w-fit">
             <Shield className="w-8 h-8 text-white" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-slate-900"> Corpo Ambientale Nazionale Sez. di Martina Franca</CardTitle>
-            <CardDescription>{isSignUp ? 'Registra un nuovo account' : 'Accedi all\'area gestionale missioni'}</CardDescription>
+            <CardTitle className="text-display-md font-light">
+              Corpo Ambientale Nazionale
+            </CardTitle>
+            <CardDescription className="text-body-md mt-2">
+              {isSignUp ? 'Registra un nuovo account' : 'Accedi all\'area gestionale missioni'}
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-ink-secondary font-normal">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -69,7 +67,7 @@ export const Login: React.FC = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-ink-secondary font-normal">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -78,11 +76,7 @@ export const Login: React.FC = () => {
                 required
               />
             </div>
-            <Button
-              type="submit"
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-3 shadow-sm transition-all"
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
@@ -95,13 +89,13 @@ export const Login: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-blue-600 hover:underline"
+              className="text-body-md text-primary hover:underline font-normal"
             >
               {isSignUp ? 'Hai già un account? Accedi' : 'Non hai un account? Registrati'}
             </button>
           </div>
 
-          <p className="text-[10px] text-center text-slate-400 mt-6">
+          <p className="text-micro-cap text-center text-ink-mute mt-6">
             L'accesso è riservato al personale autorizzato dell'associazione.
           </p>
         </CardContent>

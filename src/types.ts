@@ -29,6 +29,7 @@ export interface Mission {
   temperature?: number;
   
   // Vehicle Data
+  vehicleId?: string;
   kmStart: number;
   kmEnd?: number;
   

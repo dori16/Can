@@ -102,31 +102,92 @@ export const MissionService = {
 };
 
 export const VehicleService = {
-  async getVehicle(): Promise<Vehicle | null> {
+  async getAllVehicles(): Promise<Vehicle[]> {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('*')
+      .order('model');
+
+    if (error) throw error;
+    return (data ?? []) as Vehicle[];
+  },
+
+  async getVehicle(id?: string): Promise<Vehicle | null> {
+    if (id) {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') return null;
+        throw error;
+      }
+      return data as Vehicle;
+    }
+
     const { data, error } = await supabase
       .from('vehicles')
       .select('*')
       .eq('id', 'main-vehicle')
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-    return data as Vehicle;
+    if (error) throw error;
+    if (data) return data as Vehicle;
+
+    const { data: first, error: firstError } = await supabase
+      .from('vehicles')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+
+    if (firstError) throw firstError;
+    return first as Vehicle | null;
   },
 
-  async updateKm(km: number) {
+  async createVehicle(model: string, plate: string, currentKm: number): Promise<string> {
+    const id = `veh-${crypto.randomUUID().slice(0, 8)}`;
+    const { error } = await supabase
+      .from('vehicles')
+      .insert([{ id, model, plate, currentKm }]);
+
+    if (error) throw error;
+    return id;
+  },
+
+  async updateVehicle(id: string, updates: Partial<Pick<Vehicle, 'model' | 'plate' | 'currentKm'>>) {
+    const { error } = await supabase
+      .from('vehicles')
+      .update(updates)
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  async deleteVehicle(id: string) {
+    if (id === 'main-vehicle') {
+      throw new Error('Cannot delete the default vehicle');
+    }
+    const { error } = await supabase
+      .from('vehicles')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  async updateKm(vehicleId: string, km: number) {
     const { error } = await supabase
       .from('vehicles')
       .update({ currentKm: km })
-      .eq('id', 'main-vehicle');
+      .eq('id', vehicleId);
 
     if (error) throw error;
   },
 
   async initializeVehicle() {
-    const vehicle = await this.getVehicle();
+    const vehicle = await this.getVehicle('main-vehicle');
     if (!vehicle) {
       const { error } = await supabase
         .from('vehicles')

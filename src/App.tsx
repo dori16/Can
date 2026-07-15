@@ -3,6 +3,7 @@ import { Layout } from '@/components/Layout';
 import { Dashboard } from '@/pages/Dashboard';
 import { MissionForm } from '@/pages/MissionForm';
 import { MissionEditor } from '@/pages/MissionEditor';
+import { VehicleManagement } from '@/pages/VehicleManagement';
 import { Login } from '@/pages/Login';
 import { Toaster } from '@/components/ui/sonner';
 import { motion, AnimatePresence } from 'motion/react';
@@ -112,8 +113,8 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-blue" />
+      <div className="min-h-screen flex items-center justify-center bg-canvas-soft">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -155,6 +156,17 @@ function App() {
                   <MissionEditor userRole={userRole} />
                 </Layout>
               ) : <Navigate to="/login" />
+            } 
+          />
+
+          <Route 
+            path="/vehicle" 
+            element={
+              user && isAdminRole(userRole) ? (
+                <Layout onLogout={handleLogout} userRole={userRole}>
+                  <VehicleManagement />
+                </Layout>
+              ) : <Navigate to={user ? "/dashboard" : "/login"} />
             } 
           />
 

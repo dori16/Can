@@ -1,4 +1,4 @@
-import { Profile } from '@/types';
+import { Mission, Profile, Vehicle } from '@/types';
 
 export function formatProfileName(profile: Profile): string {
   if (profile.firstName && profile.lastName) {
@@ -33,4 +33,32 @@ export function isMissionCreatedOnBehalfOfCoordinator(profiles: Profile[], assig
   if (!coordinator) return false;
 
   return assignedBy !== coordinator.id && assignedBy !== coordinator.email;
+}
+
+export function canManageVehicles(role: string): boolean {
+  return isAdminRole(role);
+}
+
+export function canEditOdSHeader(role: string): boolean {
+  return isAdminRole(role);
+}
+
+export function canEditMissionReport(role: string, mission: Mission, userId: string): boolean {
+  if (isAdminRole(role)) return true;
+  if (mission.status === 'completed') return false;
+  return mission.crewIds?.includes(userId) ?? false;
+}
+
+export function resolveProfileName(profiles: Profile[], id: string): string {
+  const profile = profiles.find(p => p.id === id);
+  return profile ? formatProfileName(profile) : id;
+}
+
+export function formatVehicleLabel(vehicle: Vehicle): string {
+  return `${vehicle.model} — ${vehicle.plate}`;
+}
+
+export function resolveVehicleLabel(vehicles: Vehicle[], id: string): string {
+  const vehicle = vehicles.find(v => v.id === id);
+  return vehicle ? formatVehicleLabel(vehicle) : id;
 }
