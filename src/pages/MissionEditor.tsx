@@ -134,11 +134,27 @@ export const MissionEditor: React.FC<MissionEditorProps> = ({ userRole }) => {
   const selectedVehicle = vehicles.find(v => v.id === (mission?.vehicleId || odsVehicleId));
 
   const onSaveReport = async (values: ReportFormValues) => {
-    if (!id || !canEditReport) return;
+    if (!id || !mission || !canEditReport) return;
     setSaving(true);
     try {
-      await MissionService.updateMission(id, { ...values, status: mission?.status ?? 'active' });
-      toast.success('Report aggiornato!');
+      if (values.kmEnd < mission.kmStart) {
+        toast.error('I KM finali non possono essere inferiori a quelli iniziali');
+        setSaving(false);
+        return;
+      }
+
+      await MissionService.updateMission(id, {
+        ...values,
+        status: mission.status,
+      });
+
+      if (values.kmEnd) {
+        const vehicleId = mission.vehicleId || 'main-vehicle';
+        await VehicleService.updateKm(vehicleId, values.kmEnd);
+      }
+
+      setMission(prev => prev ? { ...prev, ...values } : prev);
+      toast.success(mission.status === 'completed' ? 'OdS chiuso aggiornato!' : 'Report aggiornato!');
     } catch (error) {
       toast.error('Errore durante il salvataggio');
     } finally {
@@ -243,7 +259,7 @@ export const MissionEditor: React.FC<MissionEditorProps> = ({ userRole }) => {
   if (!mission) return <div className="text-center p-20">Missione non trovata.</div>;
 
   const isCompleted = mission.status === 'completed';
-  const reportFieldsDisabled = !canEditReport || (isCompleted && !canEditHeader);
+  const reportFieldsDisabled = !canEditReport;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20">
@@ -272,7 +288,7 @@ export const MissionEditor: React.FC<MissionEditorProps> = ({ userRole }) => {
               className="rounded-xl"
             >
               <Pencil className="w-4 h-4 mr-2" />
-              {editingOdS ? 'Chiudi modifica' : 'Modifica OdS'}
+              {editingOdS ? 'Chiudi modifica' : isCompleted ? 'Modifica OdS chiuso' : 'Modifica OdS'}
             </Button>
           )}
           <Button variant="outline" onClick={handleDownloadPDF} className="rounded-xl">
@@ -286,7 +302,11 @@ export const MissionEditor: React.FC<MissionEditorProps> = ({ userRole }) => {
         <Card className="border-primary/20">
           <CardHeader className="bg-primary-subdued/30 border-b border-hairline">
             <CardTitle className="text-primary-deep">Modifica Ordine di Servizio</CardTitle>
-            <CardDescription>Aggiorna i dati iniziali della missione. Disponibile per admin e coordinatori.</CardDescription>
+            <CardDescription>
+              {isCompleted
+                ? 'Questa missione è chiusa: puoi comunque aggiornare tutti i dati dell\'OdS.'
+                : 'Aggiorna i dati iniziali della missione. Disponibile per admin e coordinatori.'}
+            </CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -532,7 +552,7 @@ export const MissionEditor: React.FC<MissionEditorProps> = ({ userRole }) => {
             </CardContent>
           </Card>
 
-          {(canEditReport && !isCompleted) && (
+          {canEditReport && !isCompleted && (
             <div className="space-y-3 sticky top-24 pt-4">
               <Button
                 type="button"
@@ -563,8 +583,11 @@ export const MissionEditor: React.FC<MissionEditorProps> = ({ userRole }) => {
             </div>
           )}
 
-          {isCompleted && canEditHeader && (
+          {canEditReport && isCompleted && (
             <div className="space-y-3 sticky top-24 pt-4">
+              <p className="text-caption text-ink-mute text-center">
+                OdS chiuso — puoi salvare le modifiche senza riaprirlo
+              </p>
               <Button
                 type="button"
                 className="w-full"
@@ -573,8 +596,14 @@ export const MissionEditor: React.FC<MissionEditorProps> = ({ userRole }) => {
                 disabled={saving}
               >
                 {saving ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                Salva Report
+                Salva modifiche
               </Button>
+              {Object.keys(errors).length > 0 && (
+                <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold text-red-500 bg-red-50 p-2 rounded-lg border border-red-100">
+                  <AlertCircle className="w-3 h-3" />
+                  Campi obbligatori mancanti
+                </div>
+              )}
             </div>
           )}
         </div>

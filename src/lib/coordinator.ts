@@ -44,9 +44,14 @@ export function canEditOdSHeader(role: string): boolean {
 }
 
 export function canEditMissionReport(role: string, mission: Mission, userId: string): boolean {
+  // Admin / coordinator can edit any mission, including closed ones
   if (isAdminRole(role)) return true;
   if (mission.status === 'completed') return false;
   return mission.crewIds?.includes(userId) ?? false;
+}
+
+export function canEditClosedOdS(role: string): boolean {
+  return isAdminRole(role);
 }
 
 export function resolveProfileName(profiles: Profile[], id: string): string {

@@ -143,7 +143,9 @@ export const Dashboard: React.FC<{ userRole?: string }> = ({ userRole }) => {
                     </td>
                     <td className="p-4 text-right">
                       <Link to={`/missions/${mission.id}`} className="text-primary font-normal text-sm hover:underline">
-                        {mission.status === 'completed' ? 'Report PDF' : 'Gestisci'}
+                        {mission.status === 'completed'
+                          ? (isAdminRole(userRole ?? '') ? 'Modifica' : 'Report PDF')
+                          : 'Gestisci'}
                       </Link>
                     </td>
                   </tr>
