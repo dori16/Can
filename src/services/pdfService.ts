@@ -1,26 +1,24 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { Mission } from '@/types';
-import { format } from 'date-fns';
+import { PDFDocument, PDFFont, PDFImage, PDFPage, rgb, StandardFonts } from 'pdf-lib';
+import { Mission, Profile, Vehicle } from '@/types';
+import { format, parseISO, isValid } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { formatProfileName, getMissionCoordinatorLabel, formatVehicleLabel } from '@/lib/coordinator';
 
-export async function generateMissionPDF(
-  mission: Mission,
-  crewNames: string = 'Nessun equipaggio assegnato',
-  coordinatorName: string = 'N/A',
-  vehicleLabel?: string
-) {
-  const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595, 842]); // A4 size
-  const { width, height } = page.getSize();
+type EmbeddedAssets = {
+  font: PDFFont;
+  boldFont: PDFFont;
+  logoImage: PDFImage | null;
+  logoDims: { width: number; height: number } | null;
+  signatureImage: PDFImage | null;
+  signatureDims: { width: number; height: number } | null;
+};
+
+async function loadAssets(pdfDoc: PDFDocument): Promise<EmbeddedAssets> {
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  const drawText = (text: string, x: number, y: number, size = 10, fontType = font) => {
-    page.drawText(text, { x, y, size, font: fontType, color: rgb(0.1, 0.1, 0.1) });
-  };
-
-  let logoImage = null;
-  let logoDims = null;
+  let logoImage: PDFImage | null = null;
+  let logoDims: { width: number; height: number } | null = null;
   try {
     const response = await fetch('/logo.png');
     const logoBytes = await response.arrayBuffer();
@@ -30,6 +28,36 @@ export async function generateMissionPDF(
     console.error('Error embedding logo:', error);
   }
 
+  let signatureImage: PDFImage | null = null;
+  let signatureDims: { width: number; height: number } | null = null;
+  try {
+    const signatureResponse = await fetch('/firma.jpg');
+    const signatureBytes = await signatureResponse.arrayBuffer();
+    signatureImage = await pdfDoc.embedJpg(signatureBytes);
+    signatureDims = signatureImage.scaleToFit(100, 50);
+  } catch (error) {
+    console.error('Error embedding signature:', error);
+  }
+
+  return { font, boldFont, logoImage, logoDims, signatureImage, signatureDims };
+}
+
+function drawMissionPage(
+  page: PDFPage,
+  mission: Mission,
+  crewNames: string,
+  coordinatorName: string,
+  vehicleLabel: string | undefined,
+  assets: EmbeddedAssets
+) {
+  const { width, height } = page.getSize();
+  const { font, boldFont, logoImage, logoDims, signatureImage, signatureDims } = assets;
+
+  const drawText = (text: string, x: number, y: number, size = 10, fontType = font) => {
+    const safe = text.replace(/\0/g, '');
+    page.drawText(safe, { x, y, size, font: fontType, color: rgb(0.1, 0.1, 0.1) });
+  };
+
   const headerHeight = logoDims ? 160 : 100;
   const titleText = 'CAN - Corpo Ambientale Nazionale Sez. di Martina Franca';
   const subtitleText = 'ORDINE DI SERVIZIO / RAPPORTO MISSIONE';
@@ -38,16 +66,13 @@ export async function generateMissionPDF(
 
   const titleWidth = boldFont.widthOfTextAtSize(titleText, titleSize);
   const subtitleWidth = font.widthOfTextAtSize(subtitleText, subtitleSize);
-
-
   const headerPadding = 20;
   const logoHeight = logoDims ? logoDims.height : 0;
 
-  // Header
   page.drawRectangle({
     x: 0,
     y: height - headerHeight,
-    width: width,
+    width,
     height: headerHeight,
     color: rgb(0.1, 0.3, 0.6),
   });
@@ -77,12 +102,20 @@ export async function generateMissionPDF(
     color: rgb(1, 1, 1),
   });
 
-  // Mission Info Section
   let currentY = height - headerHeight - 40;
   drawText(`ORDINE DI SERVIZIO N. ${mission.orderNumber || mission.id.slice(0, 8)}`, 50, currentY, 12, boldFont);
   currentY -= 25;
 
-  drawText(`Data: ${format(new Date(mission.date), 'dd/MM/yyyy', { locale: it })}`, 50, currentY);
+  const missionDate = (() => {
+    try {
+      const d = parseISO(mission.date);
+      return isValid(d) ? format(d, 'dd/MM/yyyy', { locale: it }) : mission.date;
+    } catch {
+      return mission.date;
+    }
+  })();
+
+  drawText(`Data: ${missionDate}`, 50, currentY);
   currentY -= 20;
 
   drawText(`Ora Inizio: ${mission.startTime}`, 50, currentY);
@@ -95,7 +128,6 @@ export async function generateMissionPDF(
   drawText(`Equipaggio: ${crewNames}`, 50, currentY, 10, boldFont);
   currentY -= 30;
 
-  // Vehicle Section
   page.drawRectangle({ x: 50, y: currentY - 5, width: width - 100, height: 20, color: rgb(0.9, 0.9, 0.9) });
   drawText('DATI VEICOLO', 55, currentY, 10, boldFont);
   currentY -= 30;
@@ -114,53 +146,44 @@ export async function generateMissionPDF(
   }
   currentY -= 30;
 
-  // Tasks Section
   page.drawRectangle({ x: 50, y: currentY - 5, width: width - 100, height: 20, color: rgb(0.9, 0.9, 0.9) });
   drawText('COMPITI ASSEGNATI', 55, currentY, 10, boldFont);
   currentY -= 30;
 
-  const taskLines = mission.assignedTasks.split('\n');
+  const taskLines = (mission.assignedTasks || '').split('\n');
   taskLines.forEach(line => {
+    if (currentY < 140) return;
     drawText(`• ${line}`, 60, currentY);
     currentY -= 15;
   });
   currentY -= 20;
 
-  // Report Section
-  page.drawRectangle({ x: 50, y: currentY - 5, width: width - 100, height: 20, color: rgb(0.9, 0.9, 0.9) });
-  drawText('RESOCONTO OPERATIVO', 55, currentY, 10, boldFont);
-  currentY -= 30;
+  if (currentY > 160) {
+    page.drawRectangle({ x: 50, y: currentY - 5, width: width - 100, height: 20, color: rgb(0.9, 0.9, 0.9) });
+    drawText('RESOCONTO OPERATIVO', 55, currentY, 10, boldFont);
+    currentY -= 30;
 
-  if (mission.missionReport) {
-    const reportLines = mission.missionReport.match(/.{1,100}/g) || [mission.missionReport];
-    reportLines.forEach(line => {
-      drawText(line, 60, currentY);
-      currentY -= 15;
-    });
-  } else {
-    drawText('Nessun resoconto inserito.', 60, currentY);
-    currentY -= 15;
+    if (mission.missionReport) {
+      const reportLines = mission.missionReport.match(/.{1,100}/g) || [mission.missionReport];
+      reportLines.forEach(line => {
+        if (currentY < 140) return;
+        drawText(line, 60, currentY);
+        currentY -= 15;
+      });
+    } else {
+      drawText('Nessun resoconto inserito.', 60, currentY);
+    }
   }
-  currentY -= 30;
 
-  // Footer / Signatures
   currentY = 100;
 
-  // Add Signature Image (firma.jpg)
-  try {
-    const signatureResponse = await fetch('/firma.jpg');
-    const signatureBytes = await signatureResponse.arrayBuffer();
-    const signatureImage = await pdfDoc.embedJpg(signatureBytes);
-    const signatureDims = signatureImage.scaleToFit(100, 50);
-    
+  if (signatureImage && signatureDims) {
     page.drawImage(signatureImage, {
       x: 75,
       y: currentY + 5,
       width: signatureDims.width,
       height: signatureDims.height,
     });
-  } catch (error) {
-    console.error('Error embedding signature:', error);
   }
 
   page.drawLine({
@@ -177,13 +200,127 @@ export async function generateMissionPDF(
     thickness: 1,
   });
   drawText('Firma Operatori', 350, currentY - 15);
+}
 
-  const pdfBytes = await pdfDoc.save();
-  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+function downloadBlob(bytes: Uint8Array, filename: string) {
+  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  const safeOrderNumber = mission.orderNumber ? mission.orderNumber.replace(/\//g, '_') : mission.id.slice(0, 8);
-  link.download = `OdS_${safeOrderNumber}.pdf`;
+  link.download = filename;
   link.click();
+  URL.revokeObjectURL(url);
+}
+
+function printBlob(bytes: Uint8Array) {
+  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const printWindow = window.open(url, '_blank');
+  if (!printWindow) {
+    URL.revokeObjectURL(url);
+    throw new Error('Impossibile aprire la finestra di stampa. Controlla il blocco popup.');
+  }
+
+  const triggerPrint = () => {
+    try {
+      printWindow.focus();
+      printWindow.print();
+    } finally {
+      // Keep URL alive long enough for the print dialog / viewer
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
+  };
+
+  // Some browsers need a short delay before print is available on the PDF viewer
+  printWindow.addEventListener('load', () => {
+    window.setTimeout(triggerPrint, 400);
+  });
+  window.setTimeout(triggerPrint, 800);
+}
+
+export async function generateMissionPDF(
+  mission: Mission,
+  crewNames: string = 'Nessun equipaggio assegnato',
+  coordinatorName: string = 'N/A',
+  vehicleLabel?: string
+) {
+  const pdfDoc = await PDFDocument.create();
+  const assets = await loadAssets(pdfDoc);
+  const page = pdfDoc.addPage([595, 842]);
+  drawMissionPage(page, mission, crewNames, coordinatorName, vehicleLabel, assets);
+
+  const pdfBytes = await pdfDoc.save();
+  const safeOrderNumber = mission.orderNumber ? mission.orderNumber.replace(/\//g, '_') : mission.id.slice(0, 8);
+  downloadBlob(pdfBytes, `OdS_${safeOrderNumber}.pdf`);
+}
+
+export function filterMissionsByMonth(missions: Mission[], year: number, month: number): Mission[] {
+  return missions
+    .filter(m => {
+      try {
+        const d = parseISO(m.date);
+        return isValid(d) && d.getFullYear() === year && d.getMonth() + 1 === month;
+      } catch {
+        return false;
+      }
+    })
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.orderNumber || '').localeCompare(b.orderNumber || ''));
+}
+
+async function buildMonthlyMissionsPdfBytes(
+  missions: Mission[],
+  year: number,
+  month: number,
+  profiles: Profile[],
+  vehicles: Vehicle[]
+): Promise<{ bytes: Uint8Array; count: number }> {
+  const monthMissions = filterMissionsByMonth(missions, year, month);
+  if (monthMissions.length === 0) {
+    throw new Error('Nessun OdS trovato per il mese selezionato');
+  }
+
+  const pdfDoc = await PDFDocument.create();
+  const assets = await loadAssets(pdfDoc);
+  const coordinatorName = getMissionCoordinatorLabel(profiles);
+
+  for (const mission of monthMissions) {
+    const crewNames = mission.crewIds?.map(cid => {
+      const p = profiles.find(pr => pr.id === cid);
+      return p ? formatProfileName(p) : 'Sconosciuto';
+    }).join(', ') || 'Nessun equipaggio assegnato';
+
+    const vehicle = vehicles.find(v => v.id === mission.vehicleId);
+    const vehicleLabel = vehicle ? formatVehicleLabel(vehicle) : undefined;
+
+    const page = pdfDoc.addPage([595, 842]);
+    drawMissionPage(page, mission, crewNames, coordinatorName, vehicleLabel, assets);
+  }
+
+  const bytes = await pdfDoc.save();
+  return { bytes, count: monthMissions.length };
+}
+
+export async function generateMonthlyMissionsPDF(
+  missions: Mission[],
+  year: number,
+  month: number,
+  profiles: Profile[],
+  vehicles: Vehicle[]
+) {
+  const { bytes, count } = await buildMonthlyMissionsPdfBytes(missions, year, month, profiles, vehicles);
+  const monthLabel = String(month).padStart(2, '0');
+  downloadBlob(bytes, `OdS_${year}_${monthLabel}.pdf`);
+  return count;
+}
+
+export async function printMonthlyMissionsPDF(
+  missions: Mission[],
+  year: number,
+  month: number,
+  profiles: Profile[],
+  vehicles: Vehicle[]
+) {
+  const { bytes, count } = await buildMonthlyMissionsPdfBytes(missions, year, month, profiles, vehicles);
+  printBlob(bytes);
+  return count;
 }

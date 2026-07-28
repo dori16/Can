@@ -29,9 +29,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
       <header className="app-shell-header sticky top-0 z-50 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-primary p-2 rounded-md flex items-center justify-center text-white font-normal text-sm w-10 h-10">
-              CAN
-            </div>
+            <Link to="/dashboard" className="shrink-0">
+              <img
+                src="/logo.png"
+                alt="CAN — Corpo Ambientale Nazionale"
+                className="h-10 w-auto object-contain"
+              />
+            </Link>
             <div>
               <h1 className="font-light text-base leading-tight text-white tracking-[-0.02em]">
                 Corpo Ambientale Nazionale
