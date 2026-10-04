@@ -20,7 +20,13 @@ import {
 } from '@/components/ui/select';
 import { MissionService, VehicleService } from '@/services/missionService';
 import { UserService } from '@/services/userService';
-import { filterMissionsByMonth, generateMonthlyMissionsPDF, printMonthlyMissionsPDF } from '@/services/pdfService';
+import {
+  filterMissionsByMonth,
+  generateMonthlyActivityReportPDF,
+  generateMonthlyMissionsPDF,
+  printMonthlyActivityReportPDF,
+  printMonthlyMissionsPDF,
+} from '@/services/pdfService';
 import { Mission, Profile, Vehicle } from '@/types';
 import { isAdminRole } from '@/lib/coordinator';
 import { format } from 'date-fns';
@@ -54,6 +60,7 @@ export const Dashboard: React.FC<{ userRole?: string }> = ({ userRole }) => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [printOpen, setPrintOpen] = useState(false);
+  const [exportKind, setExportKind] = useState<'ods' | 'report'>('ods');
   const [exporting, setExporting] = useState(false);
 
   const now = new Date();
@@ -135,6 +142,39 @@ export const Dashboard: React.FC<{ userRole?: string }> = ({ userRole }) => {
     }
   };
 
+  const handleDownloadReport = async () => {
+    setExporting(true);
+    try {
+      const count = await generateMonthlyActivityReportPDF(missions, printYear, printMonth);
+      toast.success(`Report scaricato: ${count} turni`);
+      setPrintOpen(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Errore nella generazione del report';
+      toast.error(message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handlePrintReport = async () => {
+    setExporting(true);
+    try {
+      const count = await printMonthlyActivityReportPDF(missions, printYear, printMonth);
+      toast.success(`Apertura stampa report: ${count} turni`);
+      setPrintOpen(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Errore nella stampa del report';
+      toast.error(message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const openExport = (kind: 'ods' | 'report') => {
+    setExportKind(kind);
+    setPrintOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-20">
@@ -156,7 +196,13 @@ export const Dashboard: React.FC<{ userRole?: string }> = ({ userRole }) => {
         </div>
         <div className="flex flex-wrap gap-3">
           {isAdminRole(userRole ?? '') && (
-            <Button variant="outline" onClick={() => setPrintOpen(true)}>
+            <Button variant="outline" onClick={() => openExport('report')}>
+              <FileDown className="w-4 h-4 mr-2" />
+              Report mensile
+            </Button>
+          )}
+          {isAdminRole(userRole ?? '') && (
+            <Button variant="outline" onClick={() => openExport('ods')}>
               <FileDown className="w-4 h-4 mr-2" />
               Stampa OdS mensili
             </Button>
@@ -261,9 +307,13 @@ export const Dashboard: React.FC<{ userRole?: string }> = ({ userRole }) => {
       <Dialog open={printOpen} onOpenChange={setPrintOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Stampa OdS mensili</DialogTitle>
+            <DialogTitle>
+              {exportKind === 'report' ? 'Report mensile' : 'Stampa OdS mensili'}
+            </DialogTitle>
             <DialogDescription>
-              Genera un unico PDF con tutti gli Ordini di Servizio del mese selezionato.
+              {exportKind === 'report'
+                ? 'PDF con logo, mese di riferimento e tabella di data, turno e attività svolte.'
+                : 'Genera un unico PDF con tutti gli Ordini di Servizio del mese selezionato.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -311,7 +361,9 @@ export const Dashboard: React.FC<{ userRole?: string }> = ({ userRole }) => {
           <p className="text-caption">
             {monthMissionCount === 0
               ? 'Nessun OdS in questo mese.'
-              : `${monthMissionCount} OdS da includere nel PDF.`}
+              : exportKind === 'report'
+                ? `${monthMissionCount} turni da includere nel report.`
+                : `${monthMissionCount} OdS da includere nel PDF.`}
           </p>
 
           <div className="flex flex-wrap justify-end gap-3 pt-2">
@@ -320,7 +372,7 @@ export const Dashboard: React.FC<{ userRole?: string }> = ({ userRole }) => {
             </Button>
             <Button
               variant="outline"
-              onClick={handleDownloadMonth}
+              onClick={exportKind === 'report' ? handleDownloadReport : handleDownloadMonth}
               disabled={exporting || monthMissionCount === 0}
             >
               {exporting ? (
@@ -330,7 +382,10 @@ export const Dashboard: React.FC<{ userRole?: string }> = ({ userRole }) => {
               )}
               Scarica PDF
             </Button>
-            <Button onClick={handlePrintMonth} disabled={exporting || monthMissionCount === 0}>
+            <Button
+              onClick={exportKind === 'report' ? handlePrintReport : handlePrintMonth}
+              disabled={exporting || monthMissionCount === 0}
+            >
               {exporting ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
               ) : (
